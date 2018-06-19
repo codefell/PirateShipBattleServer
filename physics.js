@@ -58,12 +58,20 @@ function make_circle_body(x, y, r, dynamic_type) {
 let world_ctx = {};
 
 function init() {
-    var gravity = new b2Vec2(0, -9.8);
+    var gravity = new b2Vec2(0, 0);
     var do_sleep = true;
     let world = new b2World(gravity, do_sleep);
     world_ctx.world = world;
     world_ctx.bodies = [];
-    let ground = make_rect_body(0, -0.5, 30, 1, 0, b2Body.b2_staticBody);
+    //let ground = make_rect_body(0, -0.5, 30, 1, 0, b2Body.b2_staticBody);
+}
+
+function set_speed(id, speed) {
+    let body = world_ctx.bodies[id];
+    if (speed > 0) {
+        body.SetAwake(true);
+    }
+    body.speed = speed;
 }
 
 function set_vel(id, vx, vy) {
@@ -71,14 +79,32 @@ function set_vel(id, vx, vy) {
     world_ctx.bodies[id].SetLinearVelocity(new b2Vec2(vx, vy));
 }
 
+function set_angular_vel(id, omega) {
+    world_ctx.bodies[id].SetAwake(true);
+    world_ctx.bodies[id].SetAngularVelocity(omega);
+}
+
 function add_body(x, y, w, h, angle) {
     let id = next_body_id++;
+    console.log("add body " + id);
     world_ctx.bodies[id] = make_rect_body(x, y, w, h, angle, b2Body.b2_dynamicBody);
     return id;
 }
 
+let forward = new b2Vec2(0, 1);
+
 function run() {
     world_ctx.run_timer_id = setInterval(() => {
+        for (let body of world_ctx.bodies) {
+            if (body.speed) {
+                let vel = body.GetWorldVector(forward);
+                vel.Multiply(body.speed);
+                if (!body.IsAwake()) {
+                    body.SetAwake(true);
+                }
+                body.SetLinearVelocity(vel);
+            }
+        }
         world_ctx.world.Step(1 / 60, 6, 2);
     }, 1000/60);
 }
@@ -121,5 +147,6 @@ function debug_info() {
 
 module.exports = {
     init, add_body, get_body_tfm, run, get_world_info,
-    stop, clear, debug_info, set_vel
+    stop, clear, debug_info, set_vel, set_angular_vel,
+    set_speed
 }

@@ -21,7 +21,8 @@ function create_player(socket) {
 }
 
 function player_login(player) {
-    let x = 0, y = 5, w = 3, h = 1, angle = Math.PI / 4;
+    //console.log("player login " + player.id);
+    let x = 0, y = 5, w = 1, h = 3, angle = Math.PI / 4;
     Player.create_ship(player, x, y, w, h, angle);
     let players_info = [];
     players_info.push(Player.get_player_info(player));

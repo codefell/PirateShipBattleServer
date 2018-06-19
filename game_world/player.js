@@ -45,6 +45,11 @@ msg_handles.on_set_vel = (player, msg) => {
     PhyWorld.set_vel(player.ship_id, vel_x, vel_y);
 }
 
+msg_handles.on_set_angular_vel = (player, msg) => {
+    let {omega} = msg;
+    PhyWorld.set_angular_vel(player.ship_id, omega);
+}
+
 function create_ship(player, x, y, w, h, angle) {
     player.ship_id = PhyWorld.add_body(x, y, w, h, angle);
     player.w = w;
@@ -65,6 +70,7 @@ function start(player) {
         type: "start"
     };
     send_msg(player, msg);
+    PhyWorld.set_speed(player.ship_id, 2);
 }
 
 module.exports = {
