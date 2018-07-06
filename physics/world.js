@@ -1,6 +1,9 @@
-var m = require('./Box2D');
-Box2D = m.Box2D;
+const m = require('./Box2D');
+const Util = require("./util");
+const ObjManager = require("./obj_manager");
+const Bullet = require("./bullet");
 
+Box2D = m.Box2D;
 var b2Vec2 = Box2D.Common.Math.b2Vec2
 ,   b2_pi = Box2D.Common.b2Settings.b2_pi
 ,   b2RevoluteJointDef = Box2D.Dynamics.Joints.b2RevoluteJointDef
@@ -63,6 +66,8 @@ function init() {
     let world = new b2World(gravity, do_sleep);
     world_ctx.world = world;
     world_ctx.bodies = [];
+    world_ctx.bullet_manager = ObjManager.new_manager();
+    world_ctx.events = [];
     //let ground = make_rect_body(0, -0.5, 30, 1, 0, b2Body.b2_staticBody);
 }
 
@@ -87,24 +92,46 @@ function set_angular_vel(id, omega) {
 function add_body(x, y, w, h, angle) {
     let id = next_body_id++;
     console.log("add body " + id);
-    world_ctx.bodies[id] = make_rect_body(x, y, w, h, angle, b2Body.b2_dynamicBody);
+    let body = make_rect_body(x, y, w, h, angle, b2Body.b2_dynamicBody);
+    body.id = id;
+    body.speed = 0;
+    world_ctx.bodies[id] = body;
     return id;
 }
 
 let forward = new b2Vec2(0, 1);
 
+function update_body() {
+    for (let body of world_ctx.bodies) {
+        let vel = body.GetWorldVector(forward);
+        vel.Multiply(body.speed);
+        if (!body.IsAwake()) {
+            body.SetAwake(true);
+        }
+        body.SetLinearVelocity(vel);
+    }
+}
+
+function update_bullet() {
+    let bullet_event = Bullet.update_bullet_manager(world_ctx.world,
+        world_ctx.bullet_manager);
+    if (bullet_event) {
+        world_ctx.events.push({
+            bullet_event
+        });
+    }
+}
+
+function fetch_events() {
+    let events = world_ctx.events;
+    world_ctx.events = [];
+    return events;
+}
+
 function run() {
     world_ctx.run_timer_id = setInterval(() => {
-        for (let body of world_ctx.bodies) {
-            if (body.speed) {
-                let vel = body.GetWorldVector(forward);
-                vel.Multiply(body.speed);
-                if (!body.IsAwake()) {
-                    body.SetAwake(true);
-                }
-                body.SetLinearVelocity(vel);
-            }
-        }
+        update_body();
+        update_bullet();
         world_ctx.world.Step(1 / 60, 6, 2);
     }, 1000/60);
 }
@@ -145,8 +172,33 @@ function debug_info() {
     return info;
 }
 
+function add_bullet(x, y, vx, vy, extra_vel, speed, radius) {
+    let bullet = Bullet.new_bullet(x, y, vx, vy, extra_vel, speed, radius);
+    let id = ObjManager.add(world_ctx.bullet_manager, bullet);
+    Bullet.set_id(bullet, id);
+    return id;
+}
+
+function get_bullet_vel(id) {
+    let bullet = ObjManager.get(world_ctx.bullet_manager, id);
+    return Bullet.get_bullet_vel(bullet);
+}
+
+function remove_bullet(id) {
+    ObjManager.remove_id(world_ctx.bullet_manager, id);
+}
+
+function get_body_id(body) {
+    return body.id;
+}
+
+function get_linear_vel(body_id) {
+    return world_ctx.bodies[body_id].GetLinearVelocity();
+}
+
 module.exports = {
     init, add_body, get_body_tfm, run, get_world_info,
     stop, clear, debug_info, set_vel, set_angular_vel,
-    set_speed
+    set_speed, add_bullet, remove_bullet, fetch_events,
+    get_body_id, get_linear_vel, get_bullet_vel
 }

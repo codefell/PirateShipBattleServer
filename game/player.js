@@ -1,6 +1,6 @@
-let PhyWorld = require("../physics");
+let PhyWorld = require("../physics/world");
 let Events = require("events");
-let PromiseSocket = require("../promise_socket");
+let PromiseSocket = require("../net/promise_socket");
 
 let next_player_id = 0;
 
@@ -26,6 +26,7 @@ function dispatch_msg(player, msg) {
     try {
         msg_handles["on_" + msg.type](player, msg);
     } catch (e) {
+        console.dir(e);
         console.log("on_msg exception" + e);
     }
 }
@@ -45,9 +46,25 @@ msg_handles.on_set_vel = (player, msg) => {
     PhyWorld.set_vel(player.ship_id, vel_x, vel_y);
 }
 
+msg_handles.on_set_speed = (player, msg) => {
+    let {speed} = msg;
+    PhyWorld.set_speed(player.ship_id, speed);
+}
+
 msg_handles.on_set_angular_vel = (player, msg) => {
     let {omega} = msg;
     PhyWorld.set_angular_vel(player.ship_id, omega);
+}
+
+msg_handles.on_fire_bullet = (player, msg) => {
+    console.log(JSON.stringify(msg));
+    let {x, y, vx, vy, speed, radius} = msg;
+    let ship_vel = PhyWorld.get_linear_vel(player.ship_id);
+    console.log(`ship_vel ${ship_vel.x} ${ship_vel.y}`);
+    let id = PhyWorld.add_bullet(x, y, vx, vy, ship_vel, speed, radius);
+    let bullet_vel = PhyWorld.get_bullet_vel(id);
+    event_emitter.emit("fire_bullet", id, x, y, bullet_vel.x, bullet_vel.y, 
+        bullet_vel.Length(), radius);
 }
 
 function create_ship(player, x, y, w, h, angle) {
@@ -56,10 +73,15 @@ function create_ship(player, x, y, w, h, angle) {
     player.h = h;
 }
 
+function look_forward(player, forward) {
+    player.look_forward = forward;
+}
+
 function get_player_info(player) {
     return {
         id: player.id,
         ship_id: player.ship_id,
+        look_forward: player.look_forward,
         tfm: Object.assign({w: player.w, h: player.h},
             PhyWorld.get_body_tfm(player.ship_id))
     }
@@ -67,10 +89,10 @@ function get_player_info(player) {
 
 function start(player) {
     let msg = {
-        type: "start"
+        type: "start",
     };
     send_msg(player, msg);
-    PhyWorld.set_speed(player.ship_id, 2);
+    //PhyWorld.set_speed(player.ship_id, 2);
 }
 
 module.exports = {
@@ -79,5 +101,6 @@ module.exports = {
     send_msg,
     create_ship,
     get_player_info,
-    start
+    start,
+    look_forward
 }

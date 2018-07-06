@@ -1,7 +1,7 @@
 const net = require("net");
-const game_world = require("./game_world/game_world");
+const GameWorld = require("./game/world");
 
 net.createServer(socket => {
-    game_world.create_player(socket);
-}).listen(8080);
+    GameWorld.create_player(socket);
+}).listen(8080, "127.0.0.1");
 
