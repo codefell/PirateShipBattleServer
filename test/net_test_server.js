@@ -9,4 +9,4 @@ net.createServer(socket => {
 	message = "echo " + message;
 	PromiseSocket.send(psock, message);
     });
-}).listen(8080, "192.168.1.118");
+}).listen(8080, "0.0.0.0");
