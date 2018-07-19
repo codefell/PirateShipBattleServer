@@ -1,6 +1,7 @@
 let PhyWorld = require("../physics/world");
 let Events = require("events");
-let PromiseSocket = require("../net/promise_socket");
+//let PromiseSocket = require("../net/promise_socket");
+let KcpUdpNet = require("../net/kcp_udp_socket");
 
 let next_player_id = 0;
 
@@ -11,17 +12,27 @@ function get_event_emitter() {
     return event_emitter;
 }
 
-function create_player(socket) {
-    socket.setNoDelay(true);
-    let psock = PromiseSocket.create_promise_socket(socket);
-    let player = {};
-    player.psock = psock;
+function create_player(context) {
+    let player = {context};
+    KcpUdpNet.set_context_onmsg(context, (context, packet) => {
+        console.log("======== recv msg " + packet.data.toString());
+        dispatch_msg(player, packet.channel, packet.data.toString());
+    });
+    //socket.setNoDelay(true);
+    //let psock = PromiseSocket.create_promise_socket(socket);
+    //player.psock = psock;
+    /*
     psock.event_emitter.on("message",
         (psock, msg) => dispatch_msg(player, msg));
+        */
     return player;
 }
 
-function dispatch_msg(player, msg) {
+function dispatch_msg(player, channel, msg) {
+    if (channel != 1) {
+        console.error("unknown channel when dispatch msg");
+        return;
+    }
     msg = JSON.parse(msg);
     try {
         msg_handles["on_" + msg.type](player, msg);
@@ -32,7 +43,9 @@ function dispatch_msg(player, msg) {
 }
 
 function send_msg(player, msg) {
-    PromiseSocket.send(player.psock, msg);
+    //PromiseSocket.send(player.psock, msg);
+    msg = Buffer.from(JSON.stringify(msg));
+    KcpUdpNet.send(player.context, 1, msg);
 }
 
 msg_handles.on_login = (player, msg) => {

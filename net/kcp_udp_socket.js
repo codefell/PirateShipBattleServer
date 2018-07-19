@@ -67,13 +67,6 @@ function ack_token(rinfo, context) {
     server_sock.send(buff, rinfo.port, rinfo.address);
 }
 
-/*
-context:
-rinfo
-token
-sock_state
-*/
-
 function get_endpoint(rinfo) {
     return `${rinfo.address}:${rinfo.port}`;
 }
@@ -132,7 +125,7 @@ function on_message(data, rinfo) {
         else {
             if (context.udp_channels.has(packet.channel)) {
                 context.sock_state = SOCK_STATE_DATA;
-                event_emitter.emit("udp_data", context, packet);
+                context.onmsg(context, packet);
                 //emit udp packet
             }
             else if (context.kcp_channels.has(packet.channel)) {
@@ -152,20 +145,17 @@ function on_message(data, rinfo) {
 }
 
 let server_sock = null;
-let event_emitter = new EventEmitter();
-event_emitter.on("udp_data", (context, packet) => {
-    let echo_msg = "echo " + packet.data.toString();
-    let echo_buff = packet_to_buffer({
-        channel: packet.channel,
-        data: echo_msg
-    });
-    server_sock.send(echo_buff, context.rinfo.port, context.rinfo.address);
-});
 
-event_emitter.on("kcp_data", (context, buff) => console.log("===> kcp recv " + buff));
+function udp_send(buff, channel, rinfo) {
+    let packet_buff = packet_to_buffer({
+        channel: channel,
+        data: buff
+    });
+    server_sock.send(packet_buff, rinfo.port, rinfo.address);
+}
 
 let conn_id = 0;
-function create_context(token, udp_channels, kcp_channels) {
+function create_context(token, udp_channels, kcp_channels, onmsg) {
     let map_kcp_channels = new Map();
     let context = {
         token,
@@ -173,39 +163,80 @@ function create_context(token, udp_channels, kcp_channels) {
         conn_index: 0, //index of reconnection, used to diff delay login msg and relogin msg, inc 1 every time
         udp_channels: new Set(udp_channels),
         kcp_channels: map_kcp_channels,
-        sock_state: SOCK_STATE_PENDING
+        sock_state: SOCK_STATE_PENDING,
+        onmsg
     };
     for (let c of kcp_channels) {
         map_kcp_channels.set(c, null);
     }
     map_token_to_context.set(token, context);
     conn_id++;
+    return context;
+}
+
+function set_context_onmsg(context, onmsg) {
+    context.onmsg = onmsg;
 }
 
 function create_server(port) {
     server_sock = dgram.createSocket("udp4");
     server_sock.on("message", on_message);
     server_sock.bind(port);
-}
-
-create_context("hello", [1, 2], [3, 4]);
-create_context("world", [1, 2], [3, 4]);
-create_server(8080);
-
-let interval_id = setInterval(() => {
-    let now = Date.now();
-    for (let [token, context] of map_token_to_context) {
-        if (context.sock_state == SOCK_STATE_ACK_TOKEN
-            || context.sock_state == SOCK_STATE_DATA) {
-            for (let [channel, kcp] of context.kcp_channels) {
-                let buffs = Kcp.kcp_recv(kcp);
-                for (let buff of buffs) {
-                    event_emitter.emit("kcp_data", context, buff);
-                    Kcp.kcp_send(kcp,
-                        Buffer.concat([Buffer.from("echo "), buff]));
+    let interval_id = setInterval(() => {
+        let now = Date.now();
+        for (let [token, context] of map_token_to_context) {
+            if (context.sock_state == SOCK_STATE_ACK_TOKEN
+                || context.sock_state == SOCK_STATE_DATA) {
+                for (let [channel, kcp] of context.kcp_channels) {
+                    Kcp.kcp_update(kcp, now);
+                    let buffs = Kcp.kcp_recv(kcp);
+                    for (let buff of buffs) {
+                        context.onmsg(context, new_packet(channel, buff));
+                    }
                 }
-                Kcp.kcp_update(kcp, now);
             }
         }
+    }, 1000 / 60);
+}
+
+/*
+create_context("hello", [1, 2], [3, 4], (token, packet) => {
+    let echo_msg = "udp echo " + packet.data;
+    send(token, packet.channel, echo_msg);
+});
+create_context("world", [1, 2], [3, 4], (token, packet) => {
+    let echo_msg = "kcp echo " + packet.data;
+    send(token, packet.channel, echo_msg);
+});
+
+create_server(8080);
+*/
+
+function send(context, channel, msg) {
+    if (typeof msg == "string") {
+        msg = Buffer.from(msg);
     }
-}, 1000 / 60);
+    if (context.rinfo != null) {
+        if (context.kcp_channels.has(channel)) {
+            let kcp = context.kcp_channels.get(channel);
+            Kcp.kcp_send(kcp, msg);
+        }
+        else if (context.udp_channels.has(channel)) {
+            udp_send(msg, channel, context.rinfo);
+        }
+    }
+}
+
+function new_packet(channel, data) {
+    return {
+        channel,
+        data
+    };
+}
+
+module.exports = {
+    create_server,
+    create_context,
+    set_context_onmsg,
+    send,
+}

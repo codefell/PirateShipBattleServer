@@ -31,8 +31,8 @@ function fire_bullet(bullet_id, x, y, vx, vy, speed, radius) {
     });
 }
 
-function create_player(socket) {
-    let player = Player.create_player(socket);
+function create_player(context) {
+    let player = Player.create_player(context);
     pending_players.add(player);
 }
 
