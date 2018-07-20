@@ -74,8 +74,6 @@ function get_endpoint(rinfo) {
 function on_message(data, rinfo) {
     let endpoint = get_endpoint(rinfo);
     let packet = packet_from_buffer(data);
-    console.log("recv packet from " + endpoint);
-    console.log(packet);
     if (!map_endpoint_to_context.has(endpoint)) {
         if (packet.channel == 0) {
             let token = packet.data.toString();

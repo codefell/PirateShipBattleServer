@@ -20,7 +20,7 @@ const router = Express.Router();
 router.put("/login", (req, res) => {
     console.log(req.body);
     token = UUID.v1();
-    let context = KcpUdpNet.create_context(token, [], [1], null);
+    let context = KcpUdpNet.create_context(token, [2], [1], null);
     GameWorld.create_player(context);
     res.json({token});
 });

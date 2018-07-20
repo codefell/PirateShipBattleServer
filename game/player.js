@@ -15,7 +15,7 @@ function get_event_emitter() {
 function create_player(context) {
     let player = {context};
     KcpUdpNet.set_context_onmsg(context, (context, packet) => {
-        console.log("======== recv msg " + packet.data.toString());
+        //console.log("======== recv msg " + packet.data.toString());
         dispatch_msg(player, packet.channel, packet.data.toString());
     });
     //socket.setNoDelay(true);
@@ -29,10 +29,12 @@ function create_player(context) {
 }
 
 function dispatch_msg(player, channel, msg) {
+    /*
     if (channel != 1) {
         console.error("unknown channel when dispatch msg");
         return;
     }
+    */
     msg = JSON.parse(msg);
     try {
         msg_handles["on_" + msg.type](player, msg);
@@ -42,15 +44,15 @@ function dispatch_msg(player, channel, msg) {
     }
 }
 
-function send_msg(player, msg) {
+function send_msg(player, msg, channel) {
     //PromiseSocket.send(player.psock, msg);
     msg = Buffer.from(JSON.stringify(msg));
-    KcpUdpNet.send(player.context, 1, msg);
+    KcpUdpNet.send(player.context, channel, msg);
 }
 
 msg_handles.on_login = (player, msg) => {
     player.id = next_player_id++;
-    send_msg(player, {type: "login", id: player.id});
+    send_msg(player, {type: "login", id: player.id}, 1);
     event_emitter.emit("player_login", player);
 }
 
@@ -104,7 +106,7 @@ function start(player) {
     let msg = {
         type: "start",
     };
-    send_msg(player, msg);
+    send_msg(player, msg, 1);
     //PhyWorld.set_speed(player.ship_id, 2);
 }
 

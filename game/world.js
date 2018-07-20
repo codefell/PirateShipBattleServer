@@ -19,7 +19,7 @@ function init() {
 
 function broadcast_msg(msg) {
     _.each(all_players, player => {
-        Player.send_msg(player, msg);
+        Player.send_msg(player, msg, 1);
     });
 }
 
@@ -58,7 +58,7 @@ function player_login(player) {
     players_info = _.map(all_players, Player.get_player_info);
     send_players_ready(player, players_info);
 
-    if (all_players.length == 2) {
+    if (all_players.length == 1) {
         start_game();
     }
 }
@@ -68,7 +68,7 @@ function send_players_ready(player, ready_players) {
         type: "players_ready",
         players: ready_players
     };
-    Player.send_msg(player, msg);
+    Player.send_msg(player, msg, 1);
 }
 
 function start_game() {
@@ -81,7 +81,7 @@ function start_game() {
 
 function broadcast_msg(msg) {
     _.each(all_players, player => {
-        Player.send_msg(player, msg);
+        Player.send_msg(player, msg, 1);
     })
 }
 
@@ -116,7 +116,7 @@ function update() {
     let world_info = PhyWorld.get_world_info();
     let msg = {type:"world_info", world_info};
     _.each(all_players, player => {
-        Player.send_msg(player, msg);
+        Player.send_msg(player, msg, 2);
     });
     evts = PhyWorld.fetch_events();
     _.each(evts, evt => {
