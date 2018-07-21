@@ -140,7 +140,8 @@ function get_body_tfm(id) {
     var body = world_ctx.bodies[id];
     var pos = body.GetPosition();
     var angle = body.GetAngle();
-    return {x: pos.x, y: pos.y, angle};
+    var speed = body.speed;
+    return {x: pos.x, y: pos.y, angle, speed};
 }
 
 function get_world_info() {
@@ -148,7 +149,8 @@ function get_world_info() {
     for (let [id, body] of world_ctx.bodies.entries()) {
         var pos = body.GetPosition();
         var angle = body.GetAngle();
-        info.push({id, tfm: {x: pos.x, y: pos.y, angle}});
+        var speed = body.speed;
+        info.push({id, tfm: {x: pos.x, y: pos.y, angle, speed}});
     }
     return info;
 }
