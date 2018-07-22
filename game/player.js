@@ -3,6 +3,7 @@ let Events = require("events");
 //let PromiseSocket = require("../net/promise_socket");
 let KcpUdpNet = require("../net/kcp_udp_socket");
 let Util = require("../util");
+let Process = require("process");
 
 let next_player_id = 0;
 
@@ -47,7 +48,7 @@ function dispatch_msg(player, channel, msg) {
 
 function send_msg(player, msg, channel) {
     //PromiseSocket.send(player.psock, msg);
-    msg['ts'] = Util.time();
+    msg['ts'] = Process.uptime();
     msg = Buffer.from(JSON.stringify(msg));
     KcpUdpNet.send(player.context, channel, msg);
 }
